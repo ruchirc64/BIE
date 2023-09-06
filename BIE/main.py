@@ -1,58 +1,48 @@
-"""
-Run Training or Inference Pipeline based on user Runtime input
-"""
-
-# Import Python modules
-import sys
+# Import necessary libraries
+import streamlit as st
 import numpy as np
 import pandas as pd
-import logging.config
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, __version__, BlobLeaseClient
+from azure.storage.blob import BlobServiceClient
 
-# Import master Learner & Inference modules
-import learner
-import inference
+# Define Streamlit app title and layout
+st.set_page_config(page_title="NPS Dashboard", layout="wide")
+st.title("NPS Dashboard")
 
-# Create an object for FileHandler logger
-# Use logger to log DEBUG, INFO, ERROR comments in file
-logging.config.fileConfig(disable_existing_loggers=False, fname='../misc/logging.conf')
-logger = logging.getLogger(__name__)
+# Create a function to download data from Azure Blob Storage
+def download_data(container, blob_name, file_path):
+    blob_service_client = BlobServiceClient.from_connection_string("<YOUR_CONNECTION_STRING>")
+    blob_client = blob_service_client.get_blob_client(container=container, blob=blob_name)
+    with open(file_path, "wb") as file:
+        file.write(blob_client.download_blob().readall())
 
+# Download required data files
+download_data("mobieids", "ingestion/stage/ml_nps/axciom/ACXIOM_TO_EDR_201910_STEP_3B_csv.csv", "ACXIOM_TO_EDR_201910_STEP_3B_csv.csv")
+download_data("mobieids", "ingestion/stage/ml_nps/nps/2020_relationship_nps_data.xlsx", "2020_relationship_nps_data.xlsx")
+download_data("mobieids", "ingestion/stage/ml_nps/nps/nps_historical_2017_19.xlsx", "nps_historical_2017_19.xlsx")
+download_data("mobieids", "ingestion/stage/ml_nps/axciom/inference_batch_v1.csv", "inference_batch_v1.csv")
 
-if __name__ == "__main__":
-    #Download required source data files for NPS and DEMOG.
-    blob_service_client = BlobServiceClient.from_connection_string("DefaultEndpointsProtocol=https;AccountName=stvmbieeusmo001;AccountKey=pJLKvde1W2nxNTDvFfFPUbNrlupqyH/I8hHWJYRftoDbiQwPL1Exlk+tOiSY1NPfXQfdLcf8hPaGHfJTjB/t9A==;EndpointSuffix=core.windows.net")
-    blob_client = blob_service_client.get_blob_client(container='mobieids', blob='ingestion/stage/ml_nps/axciom/ACXIOM_TO_EDR_201910_STEP_3B_csv.csv')
-    with open('../data/demog/ACXIOM_TO_EDR_201910_STEP_3B_csv.csv',"wb") as dfile:
-        dfile.write(blob_client.download_blob().readall())
+# Sidebar
+st.sidebar.title("User Options")
+pipeline_type = st.sidebar.selectbox("Select Pipeline Type", ["Training", "Inference"])
+explainer_db = st.sidebar.checkbox("Generate Dashboard Explainer", value=True)
 
-    blob_client = blob_service_client.get_blob_client(container='mobieids', blob='ingestion/stage/ml_nps/nps/2020_relationship_nps_data.xlsx')
-    with open('../data/nps/2020_relationship_nps_data.xlsx',"wb") as dfile:
-        dfile.write(blob_client.download_blob().readall())
+# Main content based on user selection
+if pipeline_type == "Training":
+    st.header("Training Pipeline")
+    # Add your training code here
 
-    blob_client = blob_service_client.get_blob_client(container='mobieids', blob='ingestion/stage/ml_nps/nps/nps_historical_2017_19.xlsx')
-    with open('../data/nps/nps_historical_2017_19.xlsx',"wb") as dfile:
-        dfile.write(blob_client.download_blob().readall())
+elif pipeline_type == "Inference":
+    st.header("Inference Pipeline")
+    # Add your inference code here
 
-    blob_client = blob_service_client.get_blob_client(container='mobieids', blob='ingestion/stage/ml_nps/axciom/inference_batch_v1.csv')
-    with open('../data/inference_batch_v1.csv',"wb") as dfile:
-        dfile.write(blob_client.download_blob().readall())
+# Generate dashboard explainer if selected
+if explainer_db:
+    st.subheader("Dashboard Explainer")
+    # Add code to generate and display the dashboard explainer
 
-    # Read command line inputs
-
-    # Pipeline type to invoke
-    pipeline = sys.argv[1]
-    # Generate Dashboard explaining the model
-    explainer_db = sys.argv[2]
-
-    # Based on the pipeline type, invoke method of the corresponding module
-    if(pipeline=="training"):
-        learner.main(explainer_db)
-    elif(pipeline=="inference"):
-        inference.main(explainer_db)
-    else:  # If pipeline type is entered incorrectly
-        logger.error("Choose pipeline type correctly")
-        sys.exit(1)
-
-
-#added
+# Display data if needed
+if st.checkbox("Show Sample Data"):
+    # Load and display sample data
+    sample_data = pd.read_csv("ACXIOM_TO_EDR_201910_STEP_3B_csv.csv")
+    st.write("Sample Data:")
+    st.write(sample_data)
